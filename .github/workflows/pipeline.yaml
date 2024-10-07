@@ -1,0 +1,28 @@
+name: Build, Push Docker Image e Deploy Kubernetes
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Entrando no Docker Hub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: Build e Push do Docker image
+      run: |
+        cd app
+        docker build -t jottakayoml/html-custom-app:latest .
+        docker push jottakayoml/html-custom-app:latest
+    - name: Deploy para Kubernetes
+      env:
+        KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+      run: |
+        cd app
+        echo "${KUBE_CONFIG_DATA}" | base64 --decode > kubeconfig
+        export KUBECONFIG=$PWD/kubeconfig
+        helm upgrade --install html-customer-app .
